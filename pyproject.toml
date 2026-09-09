@@ -1,0 +1,33 @@
+[project]
+name = "gdai-auth"
+version = "0.1.0"
+description = "Authentication mechanics shared by GD.AI services: service tokens, webhook signatures, header redaction."
+requires-python = ">=3.12"
+dependencies = [
+    "python-jose[cryptography]>=3.3",
+    "gdai-core",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gdai_auth"]
+
+[tool.uv.sources]
+# The dependency points one way: gdai-auth uses gdai-core, never the reverse.
+# Inverting it would make the two packages one in practice.
+gdai-core = { git = "https://github.com/GD-Artifical-Inteligence/gdai-core", tag = "v0.2.1" }
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.15", "pyright>=1.1"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "BLE", "TRY"]
+ignore = ["TRY003"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"

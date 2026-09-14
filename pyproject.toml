@@ -1,7 +1,7 @@
 [project]
 name = "gdai-auth"
-version = "0.1.0"
-description = "Authentication mechanics shared by GD.AI services: service tokens, webhook signatures, header redaction."
+version = "0.2.0"
+description = "Authentication mechanics shared by GD.AI services: Keycloak token validation, service tokens, webhook signatures, header redaction."
 requires-python = ">=3.12"
 dependencies = [
     "python-jose[cryptography]>=3.3",

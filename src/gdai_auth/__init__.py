@@ -8,6 +8,13 @@ A dependência aponta para um lado só — `gdai-auth` usa `gdai-core`, nunca o
 contrário. Validar token do Keycloak exige buscar o JWKS, que é chamada HTTP.
 """
 
+from gdai_auth.keycloak import (
+    AuthProviderUnavailable,
+    InvalidToken,
+    KeycloakConfig,
+    KeycloakUser,
+    KeycloakValidator,
+)
 from gdai_auth.redaction import REDACTED, SENSITIVE_HEADERS, redact_headers
 from gdai_auth.service_token import (
     InvalidServiceToken,
@@ -24,6 +31,11 @@ from gdai_auth.webhook_signature import (
 __all__ = [
     "REDACTED",
     "SENSITIVE_HEADERS",
+    "AuthProviderUnavailable",
+    "InvalidToken",
+    "KeycloakConfig",
+    "KeycloakUser",
+    "KeycloakValidator",
     "InvalidServiceToken",
     "InvalidSignature",
     "ServiceTokenProvider",

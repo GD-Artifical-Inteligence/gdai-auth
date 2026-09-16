@@ -13,15 +13,6 @@ package as the HTTP client would drag along whatever else happens to be merged.
 
 The dependency points one way: `gdai-auth` uses `gdai-core`, never the reverse.
 
-## What it replaces
-
-| Piece | Copies before |
-|---|---|
-| `KeycloakValidator` | 4, and they had already drifted — only one carried the multiple-issuer fix |
-| `ServiceTokenProvider` | 3, written the same week during the gdai-core migration |
-| Service token validation | 3, under three different names and shapes |
-| Webhook HMAC | 2 in `lq-api` alone |
-
 ## Service tokens
 
 ```python
@@ -64,27 +55,26 @@ Two errors, and the split is the point: `InvalidToken` is a 401,
 `AuthProviderUnavailable` is a 503. Collapsing them turns "Keycloak is down"
 into "your session expired" and sends everyone to re-login during an outage.
 
-**`jwks_url` is an explicit override, not a heuristic.** The version this
-replaces rewrote the discovered JWKS URL whenever `KEYCLOAK_SERVER_URL`
-contained the substring `localhost` or `keycloak` — which, for a service
-pointed at `keycloak.keycloak.svc.cluster.local`, would have relaxed validation
-inside the cluster without anyone asking for it. Configuration that changes a
-security rule cannot hinge on a substring in a hostname.
+**Set `jwks_url` when the discovered one is not reachable** — behind a proxy,
+a tunnel, or from inside a cluster. It is an explicit override and it is the
+only supported way to change that URL: a security rule must not hinge on
+inspecting a hostname, because the day someone points `server_url` at an
+internal name the rule changes without the diff saying so.
 
 **Accepted issuers never include the token's own.** The discovered issuer plus
 the public one, because behind a proxy the server discovers the internal URL
 while browser tokens carry the public hostname. Trusting what a token says
 about who issued it validates nothing.
 
-**Key rotation does not cause an outage.** An unknown `kid` triggers one extra
-fetch before the token is refused. The previous implementation cached the JWKS
-forever, so a rotation in Keycloak meant 401 for everyone until someone
-restarted the process — with nothing in the service's own logs pointing at the
-cause.
+**Key rotation does not cause an outage.** The JWKS cache has a TTL, and an
+unknown `kid` triggers one extra fetch before the token is refused — which is
+what separates a rotation from a forged token. Cache it forever somewhere else
+and a rotation becomes 401 for everyone until a restart, with nothing in that
+service's logs pointing at the cause.
 
-**Audience is unverified unless you set it.** That is what all three services
-do today; here it is a field on the config rather than a
-`options={"verify_aud": False}` buried in the decode call.
+**Audience is unverified unless you set `audience`.** The default matches what
+the services do today. It is a field on the config, not an option buried in a
+decode call, so turning it on is a one-line change you can find.
 
 ## Webhook signatures
 
@@ -97,11 +87,10 @@ verify(body, request.headers.get("X-Hub-Signature-256"), settings.META_APP_SECRE
 verify(body, sig, secret, payload_builder=timestamped_payload(timestamp))
 ```
 
-**With a secret configured, a missing signature is a refusal.** The bug this
-exists to prevent was written as `if secret and signature:` — omitting the
-header skipped the whole check, so the bypass lived inside the condition meant
-to stop it. It appeared in three places and was fixed in three separate PRs,
-months apart.
+**With a secret configured, a missing signature is a refusal.** Never guard the
+check with `if secret and signature:` — that skips validation whenever the
+header is absent, which puts the bypass inside the condition meant to prevent
+it. This has been written three times in this codebase.
 
 Without a secret, validation does not run. That is the state of a service that
 has not configured one yet, not an authorization.
@@ -111,9 +100,9 @@ has not configured one yet, not an authorization.
 Lives here rather than with logging, and logging should depend on this. Deciding
 what counts as a secret is the security library's job.
 
-The reason is concrete: `lq-api`'s request-logging middleware stored full
-headers in Mongo — commented `# Get all headers (no filtering)` — and the routes
-serving those records required no authentication.
+Redact before anything persists or ships a header: request logs, traces, error
+reports. A log store is a credential store the moment an `Authorization` header
+lands in it.
 
 ## Development
 

@@ -1,7 +1,7 @@
 # gdai-auth
 
 Authentication mechanics shared by GD.AI services: Keycloak token validation,
-service tokens, webhook signatures, header redaction.
+company roles, service tokens, webhook signatures, header redaction.
 
 Design and rationale: [lq-api#115](https://github.com/GD-Artifical-Inteligence/lq-api/issues/115).
 
@@ -12,6 +12,52 @@ dependency CVE, a changed issuer, a signature bypass. Shipping it from the same
 package as the HTTP client would drag along whatever else happens to be merged.
 
 The dependency points one way: `gdai-auth` uses `gdai-core`, never the reverse.
+
+## Company roles
+
+ADR-0019 in the workspace (`docs/adr/0019-company-roles-and-invitations.md`).
+The role lives in Keycloak subgroups of the company group and arrives in the
+`groups` claim, full path:
+
+| Groups in the token | `company_role(user, "acme")` |
+|---|---|
+| `/company-acme` | `CompanyRole.MEMBER` |
+| `/company-acme`, `/company-acme/managers` | `CompanyRole.MANAGER` |
+| `/company-acme`, `/company-acme/owners` | `CompanyRole.OWNER` |
+| `/company-acme/owners` without `/company-acme` | `None` |
+| nothing of `acme` | `None` |
+
+```python
+from gdai_auth import CompanyRole, CompanyRoleRequired, company_access, require_company_role
+
+access = company_access(user, "acme")      # CompanyAccess(role, is_platform_admin)
+
+try:
+    require_company_role(user, "acme", CompanyRole.MANAGER)
+except CompanyRoleRequired as exc:
+    raise ApiError(403, exc.code, "...")   # exc.code == "company_role_required"
+```
+
+**The parent group is the access boundary.** A subgroup without the parent
+grants nothing: removing someone from the company is removing them from the
+parent, and a leftover subgroup must not keep them in.
+
+**The realm `admin` is support, not a role.** `company_role` returns `None` for
+an admin outside the group; `is_platform_admin` (`admin` or `realm-admin`) says
+they are support, and `require_company_role` lets them through any minimum, as
+the access checks always did. An admin who is also in the group gets the real
+role from the subgroups.
+
+**The strongest role wins.** Someone in both subgroups is an owner.
+`fallback_role` raises the role from a source outside the token — the
+company-api passes `OWNER` for the company's `owner_id`, whose token may not
+carry the group yet — and never lowers it.
+
+**A change only counts when the token is renewed.** Nothing here calls
+Keycloak; the token is the source.
+
+No FastAPI here either: `CompanyRoleRequired` carries `code`, `required` and
+`actual`, and each service turns it into a 403 in its own error format.
 
 ## Service tokens
 
@@ -103,6 +149,16 @@ what counts as a secret is the security library's job.
 Redact before anything persists or ships a header: request logs, traces, error
 reports. A log store is a credential store the moment an `Authorization` header
 lands in it.
+
+## Releases
+
+Services depend on this repo by git tag (`[tool.uv.sources]`, `tag = "vX.Y.Z"`),
+and `uv.lock` records the commit. A release is a tag; each service moves to it
+in its own commit, so one service can run a new version while the rest stay on
+the old one.
+
+- `v0.3.0`: company roles (`company_role`, `require_company_role`).
+- `v0.2.0`: Keycloak token validation.
 
 ## Development
 

@@ -1,6 +1,6 @@
 [project]
 name = "gdai-auth"
-version = "0.3.0"
+version = "0.3.1"
 description = "Authentication mechanics shared by GD.AI services: Keycloak token validation, company roles, service tokens, webhook signatures, header redaction."
 requires-python = ">=3.12"
 dependencies = [
@@ -18,7 +18,7 @@ packages = ["src/gdai_auth"]
 [tool.uv.sources]
 # The dependency points one way: gdai-auth uses gdai-core, never the reverse.
 # Inverting it would make the two packages one in practice.
-gdai-core = { git = "https://github.com/GD-Artifical-Inteligence/gdai-core", tag = "v0.2.1" }
+gdai-core = { git = "https://github.com/GD-Artifical-Inteligence/gdai-core", tag = "v0.2.2" }
 
 [dependency-groups]
 dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.15", "pyright>=1.1"]

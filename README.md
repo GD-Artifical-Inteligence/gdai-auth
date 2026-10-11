@@ -158,6 +158,7 @@ in its own commit, so one service can run a new version while the rest stay on
 the old one.
 
 - `v0.3.0`: company roles (`company_role`, `require_company_role`).
+- `v0.3.1`: same API, now on gdai-core `v0.2.2`.
 - `v0.2.0`: Keycloak token validation.
 
 ## Development

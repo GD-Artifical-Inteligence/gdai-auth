@@ -150,6 +150,32 @@ Redact before anything persists or ships a header: request logs, traces, error
 reports. A log store is a credential store the moment an `Authorization` header
 lands in it.
 
+## Company principal
+
+Company routes accept two kinds of caller: a Keycloak user and another service
+holding an HS256 service token. `resolve_company_principal` maps the second to a
+synthetic `KeycloakUser` that is valid only for the company in the path (role
+`MANAGER` by default, no realm roles, never a platform admin), so
+`company_role` and `require_company_role` work unchanged. Use
+`is_service_principal` to mark the audit actor as a service. The library knows
+no framework; each service translates `InvalidServiceToken` into its own error.
+
+```python
+async def get_company_principal(
+    company_external_id: str, token: str = Depends(oauth2_scheme)
+) -> KeycloakUser:
+    try:
+        return await resolve_company_principal(
+            token,
+            company_external_id,
+            secret_key=settings.JWT_SECRET_KEY,
+            allowed_services=COMPANY_SERVICE_CALLERS,
+            validate_user=get_current_user,
+        )
+    except InvalidServiceToken as exc:
+        raise <the service's 401 error> from exc
+```
+
 ## Releases
 
 Services depend on this repo by git tag (`[tool.uv.sources]`, `tag = "vX.Y.Z"`),
@@ -157,6 +183,7 @@ and `uv.lock` records the commit. A release is a tag; each service moves to it
 in its own commit, so one service can run a new version while the rest stay on
 the old one.
 
+- `v0.4.0`: company principal for service tokens (`resolve_company_principal`, `service_company_principal`, `is_service_token`, `is_service_principal`).
 - `v0.3.0`: company roles (`company_role`, `require_company_role`).
 - `v0.3.1`: same API, now on gdai-core `v0.2.2`.
 - `v0.2.0`: Keycloak token validation.

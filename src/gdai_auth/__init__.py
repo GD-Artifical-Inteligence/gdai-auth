@@ -8,6 +8,14 @@ A dependência aponta para um lado só — `gdai-auth` usa `gdai-core`, nunca o
 contrário. Validar token do Keycloak exige buscar o JWKS, que é chamada HTTP.
 """
 
+from gdai_auth.company_principal import (
+    DEFAULT_SERVICE_COMPANY_ROLE,
+    SERVICE_SUBJECT_PREFIX,
+    is_service_principal,
+    is_service_token,
+    resolve_company_principal,
+    service_company_principal,
+)
 from gdai_auth.company_roles import (
     COMPANY_ROLE_REQUIRED_CODE,
     MANAGERS_SUBGROUP,
@@ -47,11 +55,13 @@ from gdai_auth.webhook_signature import (
 
 __all__ = [
     "COMPANY_ROLE_REQUIRED_CODE",
+    "DEFAULT_SERVICE_COMPANY_ROLE",
     "MANAGERS_SUBGROUP",
     "OWNERS_SUBGROUP",
     "PLATFORM_ADMIN_ROLES",
     "REDACTED",
     "SENSITIVE_HEADERS",
+    "SERVICE_SUBJECT_PREFIX",
     "AuthProviderUnavailable",
     "CompanyAccess",
     "CompanyRole",
@@ -69,9 +79,13 @@ __all__ = [
     "expected_signature",
     "has_at_least",
     "is_platform_admin",
+    "is_service_principal",
+    "is_service_token",
     "redact_headers",
     "require_company_role",
+    "resolve_company_principal",
     "role_subgroup_path",
+    "service_company_principal",
     "strongest_role",
     "timestamped_payload",
     "verify",
